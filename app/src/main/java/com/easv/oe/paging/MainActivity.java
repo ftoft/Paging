@@ -2,19 +2,20 @@ package com.easv.oe.paging;
 
 import android.app.ListActivity;
 import android.content.Context;
-import android.support.v7.app.AppCompatActivity;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AbsListView;
-import android.widget.BaseAdapter;
-import android.widget.LinearLayout;
+import android.widget.ArrayAdapter;
 import android.widget.TextView;
 
 import com.easv.oe.paging.DALC.BESyllabus;
-import com.easv.oe.paging.DALC.SyllabusCollection;
+import com.easv.oe.paging.DALC.SyllabusRepository;
+
+import java.util.List;
 
 public class MainActivity extends ListActivity  implements AbsListView.OnScrollListener {
 
@@ -22,13 +23,13 @@ public class MainActivity extends ListActivity  implements AbsListView.OnScrollL
 
 
     PagingAdapter m_adapter;
-    SyllabusCollection m_data;
+    SyllabusRepository m_data;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         m_adapter = new PagingAdapter(this);
-        m_data = new SyllabusCollection();
+        m_data = new SyllabusRepository();
         setListAdapter(m_adapter);
         getListView().setOnScrollListener(this);
     }
@@ -36,44 +37,51 @@ public class MainActivity extends ListActivity  implements AbsListView.OnScrollL
     public void onScroll(AbsListView view,
                          int firstVisible, int visibleCount, int totalCount) {
 
+        //TODO: Invstegate if this is correct.
         boolean loadMore = /* maybe add a padding */
                 firstVisible + visibleCount >= totalCount;
 
-        Log.d(TAG, "onScroll " + firstVisible + " " + visibleCount + " " + totalCount);
+        //Log.d(TAG, "onScroll " + firstVisible + " " + visibleCount + " " + totalCount);
         if(loadMore) {
-            m_adapter.count += visibleCount; // or any other amount
-            Log.d(TAG, "adapter.count=" + m_adapter.count);
-            m_adapter.notifyDataSetChanged();
+            //TODO: Need some logic to calculate the page to fetch from the serviec.
+
+            new LoadDataTask().execute(1);
         }
     }
 
+
+
     public void onScrollStateChanged(AbsListView v, int s) { }
 
-    class PagingAdapter extends BaseAdapter {
+    class LoadDataTask extends AsyncTask<Integer, Void, List<BESyllabus>> {
 
-        int count = 10; /* starting amount */
-        Context m_context;
-
-        public PagingAdapter(Context c)
-        {
-            m_context = c;
+        @Override
+        protected List<BESyllabus> doInBackground(Integer... page) {
+            return m_data.getPage(page[0]);
         }
 
-        public int getCount() { return count; }
+        @Override
+        protected void onPostExecute(List<BESyllabus> beSyllabuses) {
+            m_adapter.addAll(beSyllabuses);
+        }
+    }
 
-        public Object getItem(int pos) { return pos; }
+    class PagingAdapter extends ArrayAdapter<BESyllabus> {
 
-        public long getItemId(int pos) { return pos; }
+        public PagingAdapter(Context context) {
+            super(context, R.layout.cell);
+        }
+
 
         public View getView(int pos, View v, ViewGroup p) {
             if (v == null) {
-                LayoutInflater li = (LayoutInflater) m_context.getSystemService(
+                LayoutInflater li = (LayoutInflater) getContext().getSystemService(
                         Context.LAYOUT_INFLATER_SERVICE);
                 v = li.inflate(R.layout.cell, null);
             }
 
             Log.d(TAG, "View at pos " + pos + " shown");
-            BESyllabus s = m_data.get(pos);
+            BESyllabus s = getItem(pos);
             TextView number = (TextView)v.findViewById(R.id.txtID);
             TextView title =  (TextView)v.findViewById(R.id.txtTitle);
 
